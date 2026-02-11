@@ -1,0 +1,23 @@
+{
+  "name": "duxt-mcp",
+  "version": "0.1.0",
+  "description": "Hosted MCP server for Duxt framework documentation and tools",
+  "type": "module",
+  "scripts": {
+    "build": "bash scripts/copy-docs.sh && tsc",
+    "dev": "bash scripts/copy-docs.sh && tsx src/index.ts",
+    "start": "node dist/index.js",
+    "copy-docs": "bash scripts/copy-docs.sh"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "express": "^4.21.2",
+    "gray-matter": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.15.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
