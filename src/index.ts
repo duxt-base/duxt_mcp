@@ -1,5 +1,4 @@
 import express from "express";
-import { randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpServer } from "./server.js";
 import { loadDocs, getAllDocs } from "./docs-loader.js";
@@ -23,59 +22,30 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Store active transports by session ID
-const transports = new Map<string, StreamableHTTPServerTransport>();
-
-// MCP endpoint — handles POST, GET, DELETE
+// MCP endpoint — stateless, JSON responses, no auth
 app.post("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-
-  // Reuse existing transport for the session
-  if (sessionId && transports.has(sessionId)) {
-    const transport = transports.get(sessionId)!;
-    await transport.handleRequest(req, res, req.body);
-    return;
-  }
-
-  // New session — create transport and connect server
+  // Each request gets a fresh transport+server (stateless)
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
+    sessionIdGenerator: undefined, // stateless — no session tracking
+    enableJsonResponse: true, // JSON instead of SSE
   });
-
-  transport.onclose = () => {
-    if (transport.sessionId) {
-      transports.delete(transport.sessionId);
-    }
-  };
 
   const server = createMcpServer();
   await server.connect(transport);
-
-  if (transport.sessionId) {
-    transports.set(transport.sessionId, transport);
-  }
-
   await transport.handleRequest(req, res, req.body);
+
+  // Clean up after response
+  await server.close();
 });
 
 app.get("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  if (!sessionId || !transports.has(sessionId)) {
-    res.status(400).json({ error: "No active session. Send a POST to /mcp first." });
-    return;
-  }
-  const transport = transports.get(sessionId)!;
-  await transport.handleRequest(req, res);
+  // Stateless server doesn't support GET SSE streams
+  res.status(405).json({ error: "Method not allowed. Use POST." });
 });
 
 app.delete("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  if (!sessionId || !transports.has(sessionId)) {
-    res.status(400).json({ error: "No active session." });
-    return;
-  }
-  const transport = transports.get(sessionId)!;
-  await transport.handleRequest(req, res);
+  // Stateless server doesn't support DELETE
+  res.status(405).json({ error: "Method not allowed. Stateless server." });
 });
 
 // Start server
