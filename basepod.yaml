@@ -1,0 +1,4 @@
+name: duxt-mcp
+type: docker
+domain: mcp.duxt.dev
+port: 3000
