@@ -126,7 +126,7 @@ export function registerTools(server: McpServer): void {
       type: z
         .enum(["model", "page", "component", "api", "layout"])
         .describe("Type of code to generate"),
-      name: z.string().describe("Name for the generated item (e.g. 'Post', 'HomePage', 'BlogLayout')"),
+      name: z.string().describe("Name for the generated item (e.g. 'Post', 'HomePage', 'BlogLayout', 'Admin/Post')"),
       fields: z
         .record(z.string(), z.string())
         .optional()
@@ -359,43 +359,61 @@ class ${name} extends StatelessComponent {
 
       if (taskLower.includes("dev") || taskLower.includes("run") || taskLower.includes("start") || taskLower.includes("serve")) {
         suggestions.push(
-          `## Start development server\n\n\`\`\`\nduxt dev\n\`\`\`\n\nStarts a hot-reload dev server (default port 8080). Watches for file changes and rebuilds automatically.`
+          `## Start development server\n\n\`\`\`\nduxt dev\nduxt dev --port 9090  # Custom port\n\`\`\`\n\nStarts a hot-reload dev server (default port 8080). Watches for file changes and rebuilds automatically.\n\n### Running multiple apps simultaneously\n\nUse different ports for each app:\n\`\`\`\n# Terminal 1\ncd app1 && duxt dev --port 8080\n\n# Terminal 2\ncd app2 && duxt dev --port 9090\n\`\`\`\n\nEach app uses 5 ports starting from the base port (proxy, api, jaspr, webdev, jaspr-proxy).`
         );
       }
 
       if (taskLower.includes("build") || taskLower.includes("production") || taskLower.includes("deploy")) {
         suggestions.push(
-          `## Build for production\n\n\`\`\`\nduxt build\n\`\`\`\n\nCreates an optimized production build in \`.output/\`. For static mode, generates HTML files. For server mode, compiles the Dart server binary.`
+          `## Build for production\n\n\`\`\`\nduxt build\nduxt build --desktop    # Also build desktop app (Tauri)\n\`\`\`\n\nCreates an optimized production build in \`.output/\`. For static mode, generates HTML files. For server mode, compiles the Dart server binary.\n\n### Desktop builds\n\n\`\`\`\nduxt build desktop          # Build desktop app only\nduxt build desktop --debug  # Debug mode\nduxt build --desktop        # Web + desktop together\n\`\`\`\n\nRequires Tauri v2 setup in \`src-tauri/\` directory.`
+        );
+      }
+
+      if (taskLower.includes("desktop") || taskLower.includes("tauri") || taskLower.includes("native")) {
+        suggestions.push(
+          `## Desktop App (Tauri)\n\n\`\`\`\nduxt build desktop          # Build desktop app\nduxt build desktop --debug  # Debug mode\nduxt build --desktop        # Build web + desktop together\n\`\`\`\n\nDuxt uses Tauri v2 for desktop builds. Requires:\n- Rust toolchain installed\n- \`src-tauri/\` directory with Tauri config\n- Run \`cargo install tauri-cli --version ^2\` first`
+        );
+      }
+
+      if (taskLower.includes("module")) {
+        suggestions.push(
+          `## Generate a module\n\n\`\`\`\nduxt g module <ModuleName>\n\`\`\`\n\nExamples:\n\`\`\`\nduxt g module Blog                # lib/blog/pages/ + components/\nduxt g module Admin/Dashboard      # lib/admin/dashboard/pages/ + components/ (namespaced)\nduxt g module Theme/Home           # lib/theme/home/pages/ (maps to /)\n\`\`\`\n\nCreates a module directory with pages/ and components/ subdirectories.\nNamespace support: \`Namespace/Module\` creates nested structure with auto-routing.`
         );
       }
 
       if (taskLower.includes("model") || taskLower.includes("orm") || taskLower.includes("database")) {
         suggestions.push(
-          `## Generate a model\n\n\`\`\`\nduxt g model <ModelName> <field:type> [field:type...]\n\`\`\`\n\nExample:\n\`\`\`\nduxt g model Post title:string body:text published:bool\n\`\`\`\n\nCreates \`lib/models/post.dart\` with schema, fromMap/toMap, and migration support.`
+          `## Generate a model\n\n\`\`\`\nduxt g model <ModelName> <field:type> [field:type...]\n\`\`\`\n\nExample:\n\`\`\`\nduxt g model Post title:string body:text published:bool\n\`\`\`\n\nCreates \`lib/models/post.dart\` with schema, fromMap/toMap, and migration support.\n\n## Database Configuration\n\nConfigure database credentials in \`duxt.config.dart\`:\n\`\`\`\nstatic const database = (\n  driver: String.fromEnvironment('DB_DRIVER', defaultValue: 'sqlite'),\n  host: String.fromEnvironment('DB_HOST', defaultValue: 'localhost'),\n  port: int.fromEnvironment('DB_PORT', defaultValue: 3306),\n  name: String.fromEnvironment('DB_NAME', defaultValue: 'myapp'),\n  username: String.fromEnvironment('DB_USER', defaultValue: 'root'),\n  password: String.fromEnvironment('DB_PASS', defaultValue: ''),\n);\n\`\`\``
         );
       }
 
       if (taskLower.includes("page") || taskLower.includes("route")) {
         suggestions.push(
-          `## Generate a page\n\n\`\`\`\nduxt g page <path>\n\`\`\`\n\nExample:\n\`\`\`\nduxt g page blog/[slug]\n\`\`\`\n\nCreates a page component at the specified route path with file-based routing.`
+          `## Generate a page\n\n\`\`\`\nduxt g page <path>\n\`\`\`\n\nExamples:\n\`\`\`\nduxt g page blog/[slug]\nduxt g page Admin/Posts/edit    # Namespace-aware: creates lib/admin/posts/pages/edit.dart\n\`\`\`\n\nCreates a page component at the specified route path with file-based routing.\nNamespace support: use \`Namespace/Module/page\` format (uppercase first letter = namespace).`
         );
       }
 
       if (taskLower.includes("scaffold") || taskLower.includes("crud")) {
         suggestions.push(
-          `## Scaffold CRUD\n\n\`\`\`\nduxt scaffold <ResourceName> <field:type> [field:type...]\n\`\`\`\n\nExample:\n\`\`\`\nduxt scaffold Post title:string body:text\n\`\`\`\n\nGenerates: model, API routes (GET/POST/PUT/DELETE), list page, detail page, and form component.`
+          `## Scaffold CRUD\n\n\`\`\`\nduxt scaffold <ResourceName> <field:type> [field:type...]\n\`\`\`\n\nExample:\n\`\`\`\nduxt scaffold Post title:string body:text\nduxt scaffold Admin/Post title:string body:text  # Namespace-aware\n\`\`\`\n\nGenerates: model, API routes (GET/POST/PUT/DELETE), list page, detail page, and form component.\nWith namespace: creates files under \`lib/admin/post/\` and routes to \`/admin/posts\`.`
         );
       }
 
       if (taskLower.includes("component")) {
         suggestions.push(
-          `## Generate a component\n\n\`\`\`\nduxt g component <ComponentName>\n\`\`\`\n\nExample:\n\`\`\`\nduxt g component PostCard\n\`\`\`\n\nCreates a reusable component in \`lib/components/\`.`
+          `## Generate a component\n\n\`\`\`\nduxt g component <ComponentName>\n\`\`\`\n\nExamples:\n\`\`\`\nduxt g component PostCard\nduxt g component Admin/PostCard  # Creates in lib/admin/components/\n\`\`\`\n\nCreates a reusable component in \`lib/components/\` (or namespace dir).`
         );
       }
 
       if (taskLower.includes("layout")) {
         suggestions.push(
-          `## Generate a layout\n\n\`\`\`\nduxt g layout <LayoutName>\n\`\`\`\n\nExample:\n\`\`\`\nduxt g layout Blog\n\`\`\`\n\nCreates a layout component in \`lib/layouts/\`.`
+          `## Generate a layout\n\n\`\`\`\nduxt g layout <LayoutName>\n\`\`\`\n\nExamples:\n\`\`\`\nduxt g layout Blog\nduxt g layout Admin       # Creates lib/admin/layouts/default.dart (namespace layout)\n\`\`\`\n\nCreates a layout component. Namespace layouts auto-wrap all routes within that namespace.`
+        );
+      }
+
+      if (taskLower.includes("namespace") || taskLower.includes("admin") || taskLower.includes("theme")) {
+        suggestions.push(
+          `## Namespaces (Admin/Theme)\n\nDuxt supports namespaces for grouping modules under a shared URL prefix and layout.\n\n\`\`\`\n# Create namespace modules\nduxt g module Admin/Dashboard    # lib/admin/dashboard/ → /admin/dashboard\nduxt g module Admin/Posts        # lib/admin/posts/ → /admin/posts\nduxt g module Theme/Home         # lib/theme/home/ → / (theme strips prefix)\nduxt g module Theme/Blog         # lib/theme/blog/ → /blog\n\n# Namespace layout (auto-wraps all routes in namespace)\nduxt g layout Admin              # lib/admin/layouts/default.dart\n\n# Scaffold inside namespace\nduxt scaffold Admin/Post title:String body:String\n\`\`\`\n\nThe \`theme/\` namespace is special: it maps to root \`/\` routes (prefix stripped).\nExisting flat modules (\`lib/posts/pages/\`) continue to work unchanged.`
         );
       }
 
@@ -472,6 +490,7 @@ my-app/
 - Pages in \`lib/pages/\` map directly to routes (file-based routing)
 - Dynamic routes use \`[param]\` syntax: \`[slug].dart\` → \`/:slug\`
 - Layouts wrap pages with shared UI (nav, footer)
+- Namespaces: \`lib/admin/posts/pages/\` → \`/admin/posts\`, \`lib/theme/home/pages/\` → \`/\`
 - Build output goes to \`.output/public/\` — deploy anywhere static`,
 
         server: `# Duxt Server Project Structure
@@ -515,7 +534,9 @@ my-app/
 - Models in \`lib/models/\` define database schema using duxt_orm
 - Server API in \`server/api/\` handles REST endpoints
 - \`duxt_orm\` auto-migrates: creates tables and adds missing columns
-- SQLite for dev, PostgreSQL/MySQL for production`,
+- SQLite for dev, PostgreSQL/MySQL for production
+- Database credentials go in \`duxt.config.dart\` via \`String.fromEnvironment\`
+- Namespaces: \`lib/admin/posts/pages/\` → \`/admin/posts\` with auto-layout wrapping`,
 
         client: `# Duxt Client (SPA) Project Structure
 

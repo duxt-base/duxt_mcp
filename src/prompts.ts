@@ -55,7 +55,13 @@ class ${pageName} extends StatelessComponent {
    - \`lib/pages/about.dart\` → \`/about\`
    - \`lib/pages/blog/[slug].dart\` → \`/blog/:slug\`
 
-4. **Apply a layout** by wrapping with your layout component in \`app.dart\`.
+4. **Namespace routing:** Group pages under a namespace prefix:
+   - \`lib/admin/posts/pages/index.dart\` → \`/admin/posts\`
+   - \`lib/theme/home/pages/index.dart\` → \`/\` (theme strips prefix)
+   - Generate with: \`duxt g page Admin/Posts/edit\`
+
+5. **Apply a layout** by wrapping with your layout component in \`app.dart\`.
+   Namespace layouts (\`lib/admin/layouts/default.dart\`) auto-wrap all routes in that namespace.
 
 ${isDynamic ? `5. **Dynamic parameter:** Access \`${paramName}\` from the route params in your page component.` : ""}
 
@@ -130,12 +136,24 @@ ${fieldPairs.map((f) => `      '${f.name}': ${f.name},`).join("\n")}
 }
 \`\`\`
 
-3. **Register the model** in your server setup:
+3. **Configure database** in \`duxt.config.dart\`:
+\`\`\`dart
+static const database = (
+  driver: String.fromEnvironment('DB_DRIVER', defaultValue: 'sqlite'),
+  host: String.fromEnvironment('DB_HOST', defaultValue: 'localhost'),
+  port: int.fromEnvironment('DB_PORT', defaultValue: 3306),
+  name: String.fromEnvironment('DB_NAME', defaultValue: 'myapp'),
+  username: String.fromEnvironment('DB_USER', defaultValue: 'root'),
+  password: String.fromEnvironment('DB_PASS', defaultValue: ''),
+);
+\`\`\`
+
+4. **Register the model** in your server setup:
 \`\`\`dart
 await ${modelName}().migrate();
 \`\`\`
 
-4. **Auto-migration:** \`migrate()\` will:
+5. **Auto-migration:** \`migrate()\` will:
    - Create the table if it doesn't exist
    - Add any missing columns via ALTER TABLE
    - Never modify or drop existing columns
@@ -265,11 +283,17 @@ duxt scaffold ${resourceName} ${fieldPairs.map((f) => `${f.name}:${f.type.toLowe
 
 This generates all 5 files automatically.
 
+### Namespace scaffolding
+\`\`\`
+duxt scaffold Admin/${resourceName} ${fieldPairs.map((f) => `${f.name}:${f.type.toLowerCase()}`).join(" ")}
+\`\`\`
+Creates files under \`lib/admin/${snake}/\` with routes at \`/admin/${plural}\`.
+
 ## After scaffolding
 1. Run \`duxt dev\` to start the server
 2. The model auto-migrates on first run
-3. Visit \`/${plural}\` to see the list page
-4. API available at \`/api/${plural}\``,
+3. Visit \`/${plural}\` to see the list page (or \`/admin/${plural}\` for namespaced)
+4. API available at \`/api/${plural}\` (or \`/api/admin/${plural}\` for namespaced)`,
             },
           },
         ],
