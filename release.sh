@@ -9,14 +9,8 @@ echo ""
 echo "Releasing duxt-mcp v${VERSION}"
 echo ""
 
-# Copy docs
-echo "-> Copying docs..."
-bash scripts/copy-docs.sh
-
 # Git
-echo "-> Committing..."
-git add -A
-git commit -m "release: v${VERSION}" || echo "Nothing to commit"
+echo "-> Pushing..."
 git push origin main
 
 # Deploy
