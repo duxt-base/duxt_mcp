@@ -20,7 +20,6 @@ COPY package.json package-lock.json ./
 RUN npm ci --production
 
 COPY --from=build /app/dist ./dist
-COPY docs/ ./docs/
 
 ENV PORT=3000
 EXPOSE 3000

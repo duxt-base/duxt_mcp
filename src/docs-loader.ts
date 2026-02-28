@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import matter from "gray-matter";
 
 export interface DocPage {
@@ -13,51 +11,97 @@ export interface DocPage {
   rawContent: string;
 }
 
-const DOCS_DIR = path.join(import.meta.dirname, "..", "docs");
+const REPO = "duxt-base/duxt-docs";
+const BRANCH = "main";
+const SECTIONS = [
+  "duxt",
+  "duxt-cli",
+  "duxt-html",
+  "duxt-orm",
+  "duxt-signals",
+  "duxt-icons",
+  "duxt-ui",
+  "tutorials",
+];
 
 const docs: Map<string, DocPage> = new Map();
 
-export function loadDocs(): void {
+export async function loadDocs(): Promise<void> {
   docs.clear();
 
-  if (!fs.existsSync(DOCS_DIR)) {
-    console.warn(`Docs directory not found: ${DOCS_DIR}`);
-    return;
-  }
+  try {
+    // Fetch entire repo tree in one API call
+    const treeUrl = `https://api.github.com/repos/${REPO}/git/trees/${BRANCH}?recursive=1`;
+    const treeRes = await fetch(treeUrl, {
+      headers: { "User-Agent": "duxt-mcp" },
+    });
 
-  const sections = fs
-    .readdirSync(DOCS_DIR, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name);
-
-  for (const section of sections) {
-    const sectionDir = path.join(DOCS_DIR, section);
-    const files = fs
-      .readdirSync(sectionDir)
-      .filter((f) => f.endsWith(".md"));
-
-    for (const file of files) {
-      const filePath = path.join(sectionDir, file);
-      const raw = fs.readFileSync(filePath, "utf-8");
-      const { data, content } = matter(raw);
-
-      const slug = file.replace(/\.md$/, "");
-      const uri = `duxt://docs/${section}/${slug}`;
-
-      docs.set(uri, {
-        uri,
-        section,
-        slug,
-        title: (data.title as string) || slug,
-        description: (data.description as string) || "",
-        order: (data.order as number) || 0,
-        content,
-        rawContent: raw,
-      });
+    if (!treeRes.ok) {
+      console.error(`Failed to fetch repo tree: ${treeRes.status} ${treeRes.statusText}`);
+      return;
     }
-  }
 
-  console.log(`Loaded ${docs.size} docs from ${sections.length} sections`);
+    const tree = (await treeRes.json()) as {
+      tree: Array<{ path: string; type: string }>;
+    };
+
+    // Filter for markdown files in lib/{section}/content/*.md
+    const mdFiles = tree.tree.filter(
+      (entry) =>
+        entry.type === "blob" &&
+        entry.path.endsWith(".md") &&
+        entry.path.startsWith("lib/") &&
+        entry.path.includes("/content/")
+    );
+
+    // Fetch all files in parallel
+    const fetches = mdFiles.map(async (entry) => {
+      // entry.path = "lib/duxt/content/routing.md"
+      const parts = entry.path.split("/");
+      // parts = ["lib", "duxt", "content", "routing.md"]
+      if (parts.length < 4) return;
+
+      const section = parts[1];
+      if (!SECTIONS.includes(section)) return;
+
+      const slug = parts[parts.length - 1].replace(/\.md$/, "");
+      const rawUrl = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${entry.path}`;
+
+      try {
+        const res = await fetch(rawUrl, {
+          headers: { "User-Agent": "duxt-mcp" },
+        });
+        if (!res.ok) return;
+
+        const raw = await res.text();
+        const { data, content } = matter(raw);
+
+        const uri = `duxt://docs/${section}/${slug}`;
+
+        docs.set(uri, {
+          uri,
+          section,
+          slug,
+          title: (data.title as string) || slug,
+          description: (data.description as string) || "",
+          order: (data.order as number) || 0,
+          content,
+          rawContent: raw,
+        });
+      } catch {
+        // Skip individual file failures
+      }
+    });
+
+    await Promise.all(fetches);
+
+    const sections = new Set(Array.from(docs.values()).map((d) => d.section));
+    console.log(
+      `Loaded ${docs.size} docs from ${sections.size} sections (GitHub: ${REPO})`
+    );
+  } catch (err) {
+    console.error("Failed to load docs from GitHub:", err);
+  }
 }
 
 export function getAllDocs(): DocPage[] {

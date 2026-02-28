@@ -5,8 +5,8 @@ import { loadDocs, getAllDocs } from "./docs-loader.js";
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
-// Load docs at startup
-loadDocs();
+// Load docs from GitHub at startup
+await loadDocs();
 
 const app = express();
 app.use(express.json());

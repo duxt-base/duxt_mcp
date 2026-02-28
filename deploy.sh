@@ -7,11 +7,7 @@ echo ""
 echo "Deploying duxt-mcp server"
 echo ""
 
-# Copy docs from duxt_docs
-echo "-> Copying docs..."
-bash scripts/copy-docs.sh
-
-# Deploy
+# Deploy (docs are fetched from GitHub at startup)
 echo "-> Deploying to Basepod..."
 bp deploy --force
 
